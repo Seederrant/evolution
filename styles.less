@@ -1,0 +1,53 @@
+body {
+}
+
+/* ---------- TOOL BOX ---------- */
+
+.flex {
+	display: flex;
+ 	flex-wrap: wrap;
+ 	justify-content: space-around;
+
+	&.flex--col {
+		flex-direction: column;
+	}
+
+	&.flex--reverse {
+		flex-direction: row-reverse;
+		
+		&.flex--col {
+			flex-direction: column-reverse;
+		}
+	}
+}
+
+.relative-parent {
+	position: relative;
+}
+
+.background-parent {
+	position: relative;
+
+	& > * {
+		position: absolute;
+		top: 0;
+		left: 0;
+	}
+
+	& > img {
+		position: relative;
+	}
+}
+
+/* ---------- OBJECTS ---------- */
+
+
+.card-name {
+	top: 10px;
+	left: 20px;
+}
+
+.deck-number {
+	top: 43px;
+	left: 40px;
+}
