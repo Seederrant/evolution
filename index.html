@@ -35,7 +35,7 @@
 
     <div class="container">
       
-      <div class="players flex flex--col flex--reverse">
+      <div class="players">
 
         <div class="player-board flex" ng-repeat="player in players">
 
@@ -58,16 +58,15 @@
       </div>
       
       <div class="footer row">
-        <div class="hand col-xs-10">
 
-          <ul class="list-inline">
-            <li class="background-parent" ng-repeat="card in player().hand">
+          <ul class="flex flex--start list-inline hand col-xs-10">
+            <li class="background-parent card" ng-repeat="card in player().hand">
               <img src="images/cardBackground.png" alt="card background">
               <label class="card-name">{{card.shortName}}</label>
             </li>
           </ul>
 
-        </div>
+
 
         <div class="menu col-xs-2">
           <div>{{phase}}</div>
