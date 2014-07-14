@@ -18,6 +18,9 @@
 .flex.flex--start {
   justify-content: flex-start;
 }
+.flex .flex_order-1 {
+  order: 1;
+}
 .relative-parent {
   position: relative;
 }

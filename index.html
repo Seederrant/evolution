@@ -35,9 +35,10 @@
 
     <div class="container">
       
-      <div class="players">
+      <div class="players flex flex--col">
 
-        <div class="player-board flex" ng-repeat="player in players">
+        <!-- <div class="player-board flex" ng-repeat="player in players | limitTo:-(players.length-1)"> -->
+        <div class="player-board flex" ng-repeat="player in players" ng-class="{'flex_order-1': $first}">
 
           <div>
             <label>{{player.name}}</label>
