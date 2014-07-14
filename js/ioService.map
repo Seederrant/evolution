@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "ioService.js",
+  "sourceRoot": "..",
+  "sources": [
+    "coffee/ioService.coffee"
+  ],
+  "names": [],
+  "mappings": ";AAAA;AAAA,EAAA,OAAO,CAAC,MAAR,CAAe,WAAf,CAA2B,CAAC,OAA5B,CAAoC,IAApC,EAA2C,SAAA,GAAA;WAE1C,IAAI,CAAC,EAAL,GAAU,EAAA,CAAG,wBAAH,EAFgC;EAAA,CAA3C,CAAA,CAAA;AAAA"
+}

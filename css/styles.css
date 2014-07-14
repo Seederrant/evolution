@@ -35,6 +35,9 @@
 .background-parent > img {
   position: relative;
 }
+.highlight {
+  border: 3px blue solid;
+}
 /* ---------- OBJECTS ---------- */
 .hand {
   overflow: auto;

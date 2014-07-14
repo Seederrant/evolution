@@ -1,6 +1,6 @@
 # Evolution.controller('EvolutionCtrl', ($scope) ->
 
-angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope) ->
+angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io) ->
 
 	$scope.phase = "Evolution"
 	$scope.deck = { number: 40 }
@@ -26,5 +26,32 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope) ->
 	$scope.player = ()->
 		return $scope.players[0]
 
-	$scope.end = ()->
+	$scope.end = (card, specie)->
 		console.log "next player"
+		socket.emit('end turn', {card: card, specie: specie})
+
+	$scope.selectedCard = ()->
+		for card in $scope.player().hand
+			if card.selected then return card
+		return
+
+	$scope.selectCard = (card)->
+		$scope.selectedCard()?.selected = false
+		card.selected = true
+		$scope.checkCompatible(card)
+
+	$scope.checkCompatible = (card)->
+		for specie in $scope.player().species
+			specie.compatible = false
+			# check
+			specie.compatible = true
+
+	$scope.selectSpecie = (specie)->
+		if specie.compatible
+			card = $scope.selectedCard()
+			$scope.player().hand.remove(card)
+			specie.push(card)
+			$scope.end(card, specie)
+
+
+
