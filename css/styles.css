@@ -19,7 +19,7 @@
   justify-content: flex-start;
 }
 .flex .flex_order-1 {
-  order: 1;
+  order: -1;
 }
 .relative-parent {
   position: relative;
@@ -38,6 +38,9 @@
 .highlight {
   border: 3px blue solid;
 }
+.finished {
+  border: 3px green solid;
+}
 /* ---------- OBJECTS ---------- */
 .hand {
   overflow: auto;
@@ -52,6 +55,9 @@
   right: 0;
   bottom: 300px;
   overflow: auto;
+}
+.players .currentPlayer {
+  background-color: #48FE00;
 }
 .footer {
   position: fixed;

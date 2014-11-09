@@ -27,10 +27,10 @@
 
     <script src="https://cdn.socket.io/socket.io-1.0.6.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.0-beta.13/angular.min.js"></script>
-    <script src="js/main.js"></script>
-    <script src="js/evolution.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/ioService.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/evolution.js"></script>
 
   </head>
 
@@ -41,14 +41,14 @@
       <div class="players flex flex--col">
 
         <!-- <div class="player-board flex" ng-repeat="player in players | limitTo:-(players.length-1)"> -->
-        <div class="player-board flex" ng-repeat="player in players" ng-class="{'flex_order-1': $first}">
+        <div class="player-board flex" ng-repeat="player in players" ng-class="currentPlayerClass($index)">
 
           <div>
             <label>{{player.name}}</label>
             <label>{{player.cardNumber}}</label>
           </div>
 
-          <div class="background-parent" ng-repeat="specie in player.species" ng-class="{highlight: specie.compatible}" ng-click="selectSpecie(specie)">
+          <div class="background-parent" ng-repeat="specie in player.species" ng-class="{highlight: specie.compatible}" ng-click="selectSpecie(specie, $index)">
             <img src="images/species.png" alt="species">
             <ul>
               <li class="list-unstyled" ng-repeat="trait in specie">
@@ -78,7 +78,7 @@
             <img src="images/deck.png" alt="deck">
             <label class="deck-number">{{deck.number}}</label>
           </div>
-          <button ng-click="end()">End</button>
+          <button ng-show="isMyTurn()" ng-click="pass()">End</button>
         </div>
       </div>
 

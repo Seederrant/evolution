@@ -1,5 +1,4 @@
-angular.module('UtilsService').service 'utils', () ->
-
+angular.module('UtilsService', []).service 'utils', () ->
 
 	this.getTime = ()->
 		return new Date().getTime()

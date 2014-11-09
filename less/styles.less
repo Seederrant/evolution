@@ -28,7 +28,7 @@ body {
 	}
 
 	& .flex_order-1 {
-		order: 1;
+		order: -1;
 	}
 }
 
@@ -54,6 +54,10 @@ body {
 	border: 3px blue solid;
 }
 
+.finished {
+	border: 3px green solid;
+}
+
 /* ---------- OBJECTS ---------- */
 @hand-height : 300px;
 
@@ -71,6 +75,10 @@ body {
 	right: 0;
 	bottom: @hand-height;
 	overflow: auto;
+
+	.currentPlayer {
+		background-color: #48FE00;
+	}
 }
 
 .footer{

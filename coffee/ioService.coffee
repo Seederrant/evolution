@@ -1,3 +1,3 @@
-angular.module("IoService").service "io" , ()->
+angular.module("IoService", []).service "io" , ()->
 
 	this.io = io("http://localhost:3000/")
