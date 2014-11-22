@@ -1,4 +1,4 @@
-angular.module('EvolutionApp', ['UtilsService', 'IoService'])
+angular.module('EvolutionApp', ['UtilsService', 'IoService', 'EvolutionCommonsService'])
 
 # $(document).ready( ->
 # )

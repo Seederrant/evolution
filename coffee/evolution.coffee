@@ -2,82 +2,90 @@
 
 # Evolution.controller('EvolutionCtrl', ($scope) ->
 
-angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io) ->
+angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, EvolutionCommons) ->
 
 	$scope.phase = null
 	$scope.deck = null
 	$scope.players = []
 	$scope.players.dirty = 0
-	$scope.currentPlayerId = 0
 	$scope.game = null
 
-	# $scope.phase = "Evolution"
-	# $scope.deck = { number: 40 }
-	
-	# $scope.players = [ 
-	# 	{
-	# 		name: 'Edouard', 
-	# 		hand: [ { shortName:"intellect" }, { shortName:"carnivorous" }, { shortName:"vivaporous" }, { shortName:"tailLoss"} ],
-	# 		species: [ [], [ { name:"intellect", shortName:"intellect" }, { name:"carnivorous", cost:1, shortName:"intellect"} ] ]
-	# 	},
-	# 	{
-	# 		name: 'Jacob', 
-	# 		cardNumber: 5,
-	# 		species: [ [], [ { name:"tailLoss", shortName:"tailLoss" }, { name:"vivaporous", cost:1, shortName:"vivaporous"} ] ]
-	# 	},
-	# 	{
-	# 		name: 'Charlotte',
-	# 		cardNumber: 2,
-	# 		species: [ [], [ { name:"tailLoss", shortName:"tailLoss" } ] ]
-	# 	} 
-	# ]
+	specie:
+		traits: []
+		foodEaten: 0
 
 	$scope.isMyTurn = ()->
-		return $scope.game? and $scope.currentPlayerId == $scope.playerId
+		return $scope.ec? and $scope.ec.isPlayerTurn( $scope.playerId )
+	
+	$scope.isMyTurnAndEvolutionPhase = ()->
+		return $scope.isMyTurn() and $scope.ec.game.phase == 'Evolution'
 
 	$scope.player = ()->
-		return $scope.players[$scope.playerId]
+		return $scope.ec?.player($scope.playerId)
 
-	$scope.pass = ()->
+	$scope.passPhaseEvolution = ()->
 		console.log "pass"
-		io.emit('pass turn')
+		io.emit('pass phase evolution', {})
 
-	$scope.end = (cardId, specieId)->
+	$scope.endTurnEvolution = (cardIndex, specieIndex)->
 		console.log "next player"
-		io.emit('end turn', {cardId: cardId, specieId: specieId})
+		console.log cardIndex
+		io.emit('end turn evolution', {cardIndex: cardIndex, specieIndex: specieIndex})
 
 	$scope.selectedCard = ()->
-		for card, i in $scope.player().hand
-			if card.selected then return { card: card, id: i }
+		for card, i in $scope.ec.currentPlayer().hand
+			if card.selected then return i
 		return
 
-	$scope.selectCard = (card)->
+	$scope.selectCard = (cardIndex)->
 		if not $scope.isMyTurn() then return
-		$scope.selectedCard()?.selected = false
+		$scope.ec.card($scope.selectedCard())?.selected = false
+		card = $scope.ec.card(cardIndex)
 		card.selected = true
-		$scope.checkCompatible(card)
+		$scope.checkCompatibleEvolution(card)
 
-	$scope.checkCompatible = (card)->
+	$scope.feedSpecie = (specieIndex)->
+		$scope.ec.feedSpecie(specieIndex)
+		emit "end turn food", { specieIndex: specieIndex}
+		return
+
+	$scope.useTrait = (specie, specieIndex, trait, traitIndex)->
+		emit "end turn food", { specieIndex: specieIndex, traitIndex: traitIndex }
+		return
+
+	$scope.checkCompatibleEvolution = (card)->
 		for specie in $scope.player().species
-			specie.compatible = false
-			# check
-			specie.compatible = true
+			specie.compatible = $scope.ec.isCompatibleEvolution(specie, card)
 
-	$scope.selectSpecie = (specie, specieId)->
+	$scope.clearCompatible = (card)->
+		for specie in $scope.ec.currentPlayer().species
+			specie.compatible = false	
+
+	$scope.selectSpecieEvolution = (specieIndex)->
+		if $scope.ec.specie(specieIndex).compatible
+			cardIndex = $scope.selectedCard()
+			$scope.ec.addTrait(specieIndex, cardIndex)
+	
+			$scope.clearCompatible()
+			$scope.endTurnEvolution(cardIndex, specieIndex)
+		return
+
+	$scope.selectSpecie = (specieIndex)->
 		if not $scope.isMyTurn() then return
-		if specie.compatible
-			cardData = $scope.selectedCard()
-			$scope.player().hand.remove(cardData.card)
-			specie.push(cardData.card)
-			$scope.end(cardData.id, specieId)
+		switch $scope.ec.game.phase
+			when 'Evolution'
+				$scope.selectSpecieEvolution(specieIndex)
+			when 'Food'
+				$scope.selectSpecieFood(specieIndex)
+		return
 
 	$scope.currentPlayerClass = (id)->
 		result = ''
-		if id == $scope.currentPlayerId
+		if id == $scope.ec.currentPlayerId()
 			result += 'currentPlayer'
 		if id > $scope.playerId
 			result += ' flex_order-1'
-		if $scope.players[id].finished
+		if $scope.ec.players()[id].finished
 			result += ' finished'
 		return result
 
@@ -85,40 +93,53 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io) -
 		localStorage
 
 	io.on "game loaded", (data)->
+		$scope.ec = new EvolutionCommons(data.game)
 		console.log "Game: " + data.gameId + ", player: " + data.playerId
 		localStorage.setItem("playerId", data.playerId)
 		localStorage.setItem("gameId", data.gameId)
 		# localStorage.gameId = data.gameId
 
 		$scope.playerId = data.playerId
-		$scope.phase = data.game.phase
-		$scope.deck = data.game.deck
-		$scope.players = data.game.players
-		$scope.game = data.game
-		$scope.currentPlayerId = data.game.currentPlayerId
 		$scope.$apply()
 		return
 
-	io.on "next player", (data)->
-		if data.previousPlayerId != $scope.playerId
-			player = $scope.players[data.previousPlayerId]
+	io.on "next player evolution", (data)->
+		previousPlayerId = $scope.ec.currentPlayerId()
+		$scope.ec.nextPlayer()
+		if previousPlayerId != $scope.playerId 	# if we are not the previous player
+			player = $scope.ec.players()[previousPlayerId]
+			player.species[data.specieIndex].traits.push(data.card)
 			if player.cardNumber?
 				player.cardNumber--
 				if player.cardNumber == 0
 					player.finished = true
-			player.species[data.specieId].push(data.card.card)
-		else
-			if player.hand.length == 0
-				player.finished = true
-		$scope.currentPlayerId = data.currentPlayerId
+			
 		$scope.$apply()
 		return
 
-	io.on "player passed", (data)->
-		$scope.players[data.previousPlayerId].finished = true
-		$scope.currentPlayerId = data.currentPlayerId
-		player.finished = true
+	io.on "player passed evolution", (data)->
+		$scope.ec.playerPassedEvolution()
+		# $scope.ec.currentPlayerId() = data.ec.currentPlayerId()
 		$scope.$apply()
+		return
+
+	io.on "next player food", (data)->
+		if data.previousPlayerId != $scope.playerId 	# if we are not the previous player
+			player = $scope.players[data.previousPlayerId]
+			player.species[data.specieIndex].foodEaten++
+			
+		# $scope.ec.currentPlayerId() = data.ec.currentPlayerId()
+		$scope.$apply()
+		return
+
+	io.on "phase food", (data)->
+		$scope.game.foodAmount = data.foodAmount
+		for player in $scope.players
+			player.finished = false
+		
+		for specie in $scope.player()
+			$scope.checkCompatibleFood(specie)
+
 		return
 
 	io.on "error", (data)->
@@ -130,7 +151,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io) -
 		return
 
 	io.on "evolution error", (data)->
-		$scope.players[data.currentPlayerId].species[data.specieId].pop()
+		$scope.players[data.ec.currentPlayerId()].species[data.specieId].traits.pop()
 		console.log "ahah t'as perdu ta carte :D"
 		return
 
