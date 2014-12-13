@@ -42,7 +42,7 @@
       <div class="players flex flex--col">
 
         <!-- <div class="player-board flex" ng-repeat="player in players | limitTo:-(players.length-1)"> -->
-        <div class="player-board flex" ng-repeat="player in ec.players()" ng-class="currentPlayerClass($index)">
+        <div class="player-board flex" ng-repeat="player in ec.game.players" ng-class="currentPlayerClass($index)">
 
           <div>
             <label>{{player.name}}</label>
@@ -51,8 +51,8 @@
 
           <div class="background-parent" ng-repeat="specie in player.species" ng-init="specieIndex = $index" ng-class="{highlight: specie.compatible}" ng-click="selectSpecie(specieIndex)">
             <img src="images/species.png" alt="species">
-            <label ng-show="{{game.phase=='Food'}}">{{specie.foodEaten}}</label>
-            <button ng-show="{{specie.compatible}}" ng-click="feedSpecie(specieIndex)">Feed</button>
+            <label ng-show="isFoodPhase()">{{specie.foodEaten}}</label>
+            <!-- <button ng-show="{{specie.compatible}}" ng-click="feedSpecie(specieIndex)">Feed</button> -->
             <ul>
               <li class="list-unstyled" ng-repeat="trait in specie.traits" ng-class="{highlight: trait.compatible}" ng-click="useTrait(specieIndex, $index)">
                 {{trait.shortName}} {{trait.cost}} {{trait.used}}
@@ -67,7 +67,7 @@
       <div class="footer row">
 
           <ul class="flex flex--start list-inline hand col-xs-10">
-            <li class="background-parent card" ng-repeat="card in player().hand" ng-click="selectCard($index)" ng-class="{highlight: card.selected}">
+            <li class="background-parent card" ng-repeat="card in me().hand" ng-click="selectCard($index)" ng-class="{highlight: card.selected}">
               <img src="images/cardBackground.png" alt="card background">
               <label class="card-name">{{card.shortName}}</label>
             </li>
@@ -76,13 +76,14 @@
 
 
         <div class="menu col-xs-2">
-          <div>{{ec.game.phase}}</div>
+          <div>{{ec.phase()}}</div>
           <div class="background-parent">
             <img src="images/deck.png" alt="deck">
             <label class="deck-number">{{ec.game.deck.number}}</label>
           </div>
           <button ng-show="isMyTurnAndEvolutionPhase()" ng-click="passPhaseEvolution()">End</button>
-          <label ng-show="{{ec.game.phase=='Food'}}">{{ec.game.foodAmount}}</label>
+          <label ng-show="isFoodPhase()">{{ec.game.foodAmount}}</label>
+          <button ng-click="restartGame()">Restart game</button>
         </div>
       </div>
 
