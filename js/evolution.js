@@ -8,6 +8,12 @@
     $scope.isMyTurnAndEvolutionPhase = function() {
       return $scope.isMyTurn() && $scope.isEvolutionPhase();
     };
+    $scope.canPassFoodAndFoodPhase = function() {
+      return $scope.isFoodPhase() && $scope.ec.canPassFood();
+    };
+    $scope.showPassButton = function() {
+      return $scope.isMyTurnAndEvolutionPhase() || $scope.canPassFoodAndFoodPhase();
+    };
     $scope.isEvolutionPhase = function() {
       var _ref;
       return ((_ref = $scope.ec) != null ? _ref.phase() : void 0) === 'Evolution';
@@ -24,16 +30,36 @@
       var _ref;
       return (_ref = $scope.ec) != null ? _ref.player($scope.playerId) : void 0;
     };
+    $scope.isMe = function(playerIndex) {
+      return $scope.playerId === playerIndex;
+    };
     $scope.passPhaseEvolution = function() {
-      console.log("pass");
+      console.log("pass evolution");
       io.emit('pass phase evolution');
     };
-    $scope.endTurnEvolution = function(cardIndex, specieIndex) {
+    $scope.passPhaseFood = function() {
+      console.log("pass food");
+      io.emit('pass phase food');
+    };
+    $scope.passPhase = function() {
+      switch ($scope.ec.phase()) {
+        case 'Evolution':
+          $scope.passPhaseEvolution();
+          break;
+        case 'Food':
+          $scope.passPhaseFood();
+      }
+    };
+    $scope.endTurnEvolution = function(cardIndex, specieIndex, addSpecie) {
+      if (addSpecie == null) {
+        addSpecie = false;
+      }
       console.log("next player");
       console.log(cardIndex);
       io.emit('end turn evolution', {
         cardIndex: cardIndex,
-        specieIndex: specieIndex
+        specieIndex: specieIndex,
+        addSpecie: addSpecie
       });
     };
     $scope.selectedCard = function() {
@@ -45,10 +71,17 @@
           return i;
         }
       }
+      return null;
+    };
+    $scope.hasCardSelected = function() {
+      return $scope.selectedCard() !== null;
     };
     $scope.selectCard = function(cardIndex) {
       var card, _ref;
       if (!$scope.isMyTurn()) {
+        return;
+      }
+      if ($scope.ec.phase() !== "Evolution") {
         return;
       }
       if ((_ref = $scope.ec.card($scope.selectedCard())) != null) {
@@ -72,7 +105,7 @@
       _ref = $scope.me().species;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         specie = _ref[_i];
-        specie.compatible = $scope.ec.checkCompatibleEvolution(specie, card);
+        $scope.ec.checkCompatibleEvolution(specie, card);
       }
     };
     $scope.checkCompatibleFood = function() {
@@ -80,15 +113,25 @@
       _ref = $scope.me().species;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         specie = _ref[_i];
-        specie.compatible = $scope.ec.checkCompatibleFood(specie);
+        $scope.ec.checkCompatibleFood(specie);
       }
     };
-    $scope.clearCompatible = function(card) {
-      var specie, _i, _len, _ref;
-      _ref = $scope.me().species;
+    $scope.isHighlightedSpecie = function(specie, playerId) {
+      return specie.compatible && $scope.isMyTurn();
+    };
+    $scope.isHighlightedTrait = function(trait, playerId) {
+      return trait.compatible && playerId === $scope.playerId;
+    };
+    $scope.clearCompatible = function() {
+      var player, specie, _i, _j, _len, _len1, _ref, _ref1;
+      _ref = $scope.ec.game.players;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        specie = _ref[_i];
-        specie.compatible = false;
+        player = _ref[_i];
+        _ref1 = player.species;
+        for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
+          specie = _ref1[_j];
+          specie.compatible = false;
+        }
       }
     };
     $scope.selectSpecieEvolution = function(specieIndex) {
@@ -111,6 +154,11 @@
         case 'Food':
           $scope.feedSpecie(specieIndex);
       }
+    };
+    $scope.addSpecie = function(cardIndex) {
+      $scope.ec.addSpecie(cardIndex);
+      $scope.clearCompatible();
+      $scope.endTurnEvolution(cardIndex, -1, true);
     };
     $scope.currentPlayerClass = function(id) {
       var result;
@@ -137,6 +185,20 @@
     $scope.restartGame = function() {
       io.emit("restart game");
     };
+    $scope.initializeFoodPhase = function() {
+      $scope.clearCompatible();
+      $scope.checkCompatibleFood();
+    };
+    $scope.initializeEvolutionPhase = function() {};
+    $scope.initializeGame = function() {
+      switch ($scope.ec.phase()) {
+        case 'Evolution':
+          $scope.initializeEvolutionPhase();
+          break;
+        case 'Food':
+          $scope.initializeFoodPhase();
+      }
+    };
     io.on("get id", function(data) {
       return localStorage;
     });
@@ -152,6 +214,7 @@
       localStorage.setItem("playerId", data.playerId);
       localStorage.setItem("gameId", data.gameId);
       $scope.playerId = data.playerId;
+      $scope.initializeGame();
       $scope.$apply();
     });
     io.on("next player evolution", function(data) {
@@ -159,7 +222,11 @@
       previousPlayerId = $scope.ec.currentPlayerId();
       $scope.ec.nextPlayer();
       player = $scope.ec.game.players[previousPlayerId];
-      player.species[data.specieIndex].traits.push(data.card);
+      if (!data.addSpecie) {
+        player.species[data.specieIndex].traits.push(data.card);
+      } else {
+        $scope.ec.createSpecie(player);
+      }
       if (player.cardNumber != null) {
         player.cardNumber--;
         if (player.cardNumber === 0) {
@@ -175,21 +242,41 @@
     });
     io.on("next player food", function(data) {
       var nextPhase;
+      console.log("next player food");
       nextPhase = $scope.ec.feedSpecie(data.specieIndex);
+      $scope.clearCompatible();
+      if (!nextPhase) {
+        $scope.checkCompatibleFood();
+      }
+      $scope.$apply();
+    });
+    io.on("player passed food", function(data) {
+      var nextPhase;
+      nextPhase = $scope.ec.playerPassedFood();
       $scope.$apply();
     });
     io.on("phase food", function(data) {
-      var player, specie, _i, _j, _len, _len1, _ref, _ref1;
+      var player, _i, _len, _ref;
+      console.log("phase food");
       $scope.ec.game.foodAmount = data.foodAmount;
       _ref = $scope.ec.game.players;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         player = _ref[_i];
         player.finished = false;
       }
-      _ref1 = $scope.me().species;
-      for (_j = 0, _len1 = _ref1.length; _j < _len1; _j++) {
-        specie = _ref1[_j];
-        $scope.ec.checkCompatibleFood(specie);
+      $scope.initializeFoodPhase();
+      $scope.$apply();
+    });
+    io.on("phase evolution", function(data) {
+      var i, player, _i, _len, _ref;
+      console.log("phase evolution");
+      $scope.ec.clearExtinctedSpecies();
+      $scope.me().hand = data.hand;
+      $scope.ec.game.deck.number = data.number;
+      _ref = $scope.ec.game.players;
+      for (i = _i = 0, _len = _ref.length; _i < _len; i = ++_i) {
+        player = _ref[i];
+        player.cardNumber = data.playersCardNumber[i];
       }
       $scope.$apply();
     });
