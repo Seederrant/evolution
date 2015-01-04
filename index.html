@@ -42,25 +42,25 @@
       <div class="players flex flex--col">
 
         <!-- <div class="player-board flex" ng-repeat="player in players | limitTo:-(players.length-1)"> -->
-        <div class="player-board flex" ng-init="playerIndex = $index" ng-repeat="player in ec.game.players" ng-class="currentPlayerClass($index)">
+        <div class="player-board flex" ng-repeat="player in ec.game.players" ng-class="currentPlayerClass(player.id)">
 
           <div>
             <label>{{player.name}}</label>
             <label>{{player.cardNumber}}</label>
           </div>
 
-          <div class="background-parent" ng-repeat="specie in player.species" ng-init="specieIndex = $index" ng-class="{highlight: isHighlightedSpecie(specie, playerIndex)}" ng-click="selectSpecie(specieIndex)">
+          <div class="background-parent" ng-repeat="specie in player.species" ng-class="{highlight: isHighlightedSpecie(specie, player.id)}" ng-click="selectSpecie(specie.id)">
             <img src="images/species.png" alt="species">
             <label ng-show="isFoodPhase()">{{specie.foodEaten}}</label>
             <!-- <button ng-show="{{specie.compatible}}" ng-click="feedSpecie(specieIndex)">Feed</button> -->
             <ul>
-              <li class="list-unstyled" ng-repeat="trait in specie.traits" ng-class="{highlight: isHighlightedTrait(trait, playerIndex)}" ng-click="useTrait(specieIndex, $index)">
-                {{trait.shortName}} {{trait.cost}} {{trait.used}}
+              <li class="list-unstyled" ng-repeat="trait in specie.traits" ng-class="{highlight: isHighlightedTrait(trait, player.id)}" ng-click="useTrait(specie.id, trait.id)">
+                {{trait.shortName}} {{ec.traits[trait.shortName].cost}} {{trait.used}}
               </li>
             </ul>
           </div>
 
-          <div class="background-parent highlight" ng-if="isMe(playerIndex)" ng-show="hasCardSelected()" ng-click="addSpecie(selectedCard())">
+          <div class="background-parent highlight" ng-if="isMe(player.id)" ng-show="hasCardSelected()" ng-click="addSpecie()">
             <img src="images/plus.png" alt="species">
           </div>
 
@@ -71,9 +71,11 @@
       <div class="footer row">
 
           <ul class="flex flex--start list-inline hand col-xs-10">
-            <li class="background-parent card" ng-repeat="card in me().hand" ng-click="selectCard($index)" ng-class="{highlight: card.selected}">
-              <img src="images/cardBackground.png" alt="card background">
-              <label class="card-name">{{card.shortName}}</label>
+            <li class="background-parent card" ng-repeat="card in me().hand" >
+              <img class="card-img" src="images/cardBackground.png" alt="card background">
+              <div class="card-traits">
+                <div class="card-name" ng-repeat="trait in card" ng-init="traitIndex = $index" ng-class="{highlight: isHighlightedCardTrait(card.id, traitIndex)}"  ng-click="selectCard(card.id, traitIndex)">{{trait}}</div>
+              </div>
             </li>
           </ul>
 
@@ -81,7 +83,7 @@
           <div>{{ec.phase()}}</div>
           <div class="background-parent">
             <img src="images/deck.png" alt="deck">
-            <label class="deck-number">{{ec.game.deck.number}}</label>
+            <label class="deck-number">{{ec.game.cardNumberInDeck}}</label>
           </div>
           <!-- <button ng-show="isMyTurnAndEvolutionPhase()" ng-click="passPhaseEvolution()">End</button> -->
           <button ng-show="showPassButton()" ng-click="passPhase()">End</button>

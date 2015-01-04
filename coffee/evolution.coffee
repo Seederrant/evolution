@@ -5,6 +5,28 @@
 
 angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, EvolutionCommons) ->
 
+	$scope.selectedCard = null
+
+	scopeApply = ()->
+		$scope.refreshIds()
+		$scope.$apply()
+		return
+
+	#dirty mother fucking angular shit hack
+	$scope.refreshIds = ()->
+		for player, i in $scope.ec.game.players
+			player.id = i
+			for specie, j in player.species
+				specie.id = j
+				for trait, k in specie.traits
+					trait.id = k
+			if player.hand?
+				for card, j in player.hand
+					card.id = j
+					for trait, k in card
+						trait.id = k
+		return
+
 	$scope.isMyTurn = ()->
 		return $scope.ec? and $scope.ec.isPlayerTurn( $scope.playerId )
 
@@ -49,29 +71,30 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 				$scope.passPhaseEvolution()
 			when 'Food'
 				$scope.passPhaseFood()
+
+		$scope.refreshIds()
 		return
 
-	$scope.endTurnEvolution = (cardIndex, specieIndex, addSpecie=false)->
+	$scope.endTurnEvolution = (specieIndex, addSpecie=false)->
 		console.log "next player"
-		console.log cardIndex
-		io.emit('end turn evolution', {cardIndex: cardIndex, specieIndex: specieIndex, addSpecie: addSpecie})
+		io.emit('end turn evolution', {selectedCard: $scope.selectedCard, specieIndex: specieIndex, addSpecie: addSpecie})
+		$scope.selectedCard = null
 		return
 
-	$scope.selectedCard = ()->
-		for card, i in $scope.me().hand
-			if card.selected then return i
-		return null
+	# $scope.selectedCard = ()->
+	# 	for card, i in $scope.me().hand
+	# 		if card.selected != -1 then return { cardIndex: i, traitIndex: card.selected }
+	# 	return null
 
 	$scope.hasCardSelected = ()->
-		return $scope.selectedCard() != null
+		return $scope.selectedCard != null
 
-	$scope.selectCard = (cardIndex)->
+	$scope.selectCard = (cardIndex, traitIndex)->
 		if not $scope.isMyTurn() then return
 		if $scope.ec.phase() != "Evolution" then return
-		$scope.ec.card($scope.selectedCard())?.selected = false
-		card = $scope.ec.card(cardIndex)
-		card.selected = true
-		$scope.checkCompatibleEvolution(card)
+		$scope.selectedCard = { cardIndex: cardIndex, traitIndex: traitIndex }
+		trait = $scope.ec.card(cardIndex)[ traitIndex ]
+		$scope.checkCompatibleEvolution(trait)
 		return
 
 	$scope.feedSpecie = (specieIndex)->
@@ -102,20 +125,24 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 	$scope.isHighlightedTrait = (trait, playerId)->
 		return trait.compatible and playerId == $scope.playerId
 
+	$scope.isHighlightedCardTrait = (cardIndex, traitIndex)->
+		return $scope.selectedCard?.cardIndex == cardIndex and $scope.selectedCard?.traitIndex == traitIndex
+
 	$scope.clearCompatible = ()->
 		for player in $scope.ec.game.players
 			for specie in player.species
 				specie.compatible = false
+				for trait in specie.traits
+					trait.compatible = false
 		return
 
 	# --- play trait/ --- #
 
 	$scope.selectSpecieEvolution = (specieIndex)->
 		if $scope.ec.specie(specieIndex).compatible
-			cardIndex = $scope.selectedCard()
-			nextPhase = $scope.ec.addTrait(specieIndex, cardIndex)
+			nextPhase = $scope.ec.addTrait(specieIndex, $scope.selectedCard)
 			$scope.clearCompatible()
-			$scope.endTurnEvolution(cardIndex, specieIndex)
+			$scope.endTurnEvolution(specieIndex)
 		return
 
 	$scope.selectSpecie = (specieIndex)->
@@ -125,12 +152,14 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 				$scope.selectSpecieEvolution(specieIndex)
 			when 'Food'
 				$scope.feedSpecie(specieIndex)
+
+		$scope.refreshIds()
 		return
 
-	$scope.addSpecie = (cardIndex)->
-		$scope.ec.addSpecie(cardIndex)
+	$scope.addSpecie = ()->
+		$scope.ec.addSpecie($scope.selectedCard)
 		$scope.clearCompatible()
-		$scope.endTurnEvolution(cardIndex, -1, true)
+		$scope.endTurnEvolution(-1, true)
 		return
 	
 	# --- /play trait --- #
@@ -162,6 +191,8 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 	$scope.initializeEvolutionPhase = ()->
 		return
 
+
+
 	$scope.initializeGame = ()->
 		switch $scope.ec.phase()
 			when 'Evolution'
@@ -190,7 +221,8 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 
 		$scope.playerId = data.playerId
 		$scope.initializeGame()
-		$scope.$apply()
+		
+		scopeApply()
 		return
 
 	# pass to next player only for other players (not for the one who just played, since we passed when we play the card before sending to server)
@@ -200,19 +232,21 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		$scope.ec.nextPlayer()
 		player = $scope.ec.game.players[previousPlayerId]
 		if not data.addSpecie
-			player.species[data.specieIndex].traits.push(data.card)
+			player.species[data.specieIndex].traits.push({ shortName: data.trait })
 		else
 			$scope.ec.createSpecie(player)
 		if player.cardNumber?
 			player.cardNumber--
 			if player.cardNumber == 0
 				player.finished = true
-		$scope.$apply()
+		
+		scopeApply()
 		return
 
 	io.on "player passed evolution", (data)->
 		nextPhase = $scope.ec.playerPassedEvolution()
-		$scope.$apply()
+		
+		scopeApply()
 		return
 
 	io.on "next player food", (data)->
@@ -220,12 +254,12 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		nextPhase = $scope.ec.feedSpecie(data.specieIndex)
 		$scope.clearCompatible()
 		if not nextPhase then $scope.checkCompatibleFood()
-		$scope.$apply()
 		return
 
 	io.on "player passed food", (data)->
 		nextPhase = $scope.ec.playerPassedFood()
-		$scope.$apply()
+		
+		scopeApply()
 		return
 
 	io.on "phase food", (data)->
@@ -237,17 +271,18 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		
 		$scope.initializeFoodPhase()
 
-		$scope.$apply()
+		scopeApply()
 		return
 
 	io.on "phase evolution", (data)->
 		console.log "phase evolution"
 		$scope.ec.clearExtinctedSpecies()
 		$scope.me().hand = data.hand
-		$scope.ec.game.deck.number = data.number
+		$scope.ec.game.cardNumberInDeck = data.number
 		for player, i in $scope.ec.game.players
 			player.cardNumber = data.playersCardNumber[i]
-		$scope.$apply()
+		
+		scopeApply()
 		return
 
 	io.on "error", (data)->
