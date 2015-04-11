@@ -7,6 +7,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 
 	$scope.selectedCard = null
 
+
 	scopeApply = ()->
 		$scope.refreshIds()
 		$scope.$apply()
@@ -97,8 +98,8 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		$scope.checkCompatibleEvolution(trait)
 		return
 
-	$scope.feedSpecie = (specieIndex)->
-		if $scope.ec.specie(specieIndex).compatible 
+	$scope.feedSpecie = (specieIndex, playerId)->
+		if $scope.isMe(playerId) and $scope.ec.specie(specieIndex).compatible
 			$scope.ec.feedSpecie(specieIndex)
 			io.emit "end turn food", { specieIndex: specieIndex}
 		return
@@ -117,7 +118,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 			$scope.ec.checkCompatibleFood(specie)
 		return
 
-	# Check is specie must be highlighted (we can feed it or we can use it) and it is our card	
+	# Check is specie must be highlighted (we can feed it or we can use it) and it is our card
 	$scope.isHighlightedSpecie = (specie, playerId)->
 		return specie.compatible and $scope.isMyTurn()
 
@@ -138,20 +139,20 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 
 	# --- play trait/ --- #
 
-	$scope.selectSpecieEvolution = (specieIndex)->
-		if $scope.ec.specie(specieIndex).compatible
+	$scope.selectSpecieEvolution = (specieIndex, playerId)->
+		if $scope.isMe(playerId) and $scope.ec.specie(specieIndex).compatible
 			nextPhase = $scope.ec.addTrait(specieIndex, $scope.selectedCard)
 			$scope.clearCompatible()
 			$scope.endTurnEvolution(specieIndex)
 		return
 
-	$scope.selectSpecie = (specieIndex)->
+	$scope.selectSpecie = (specieIndex, playerId)->
 		if not $scope.isMyTurn() then return
 		switch $scope.ec.phase()
 			when 'Evolution'
-				$scope.selectSpecieEvolution(specieIndex)
+				$scope.selectSpecieEvolution(specieIndex, playerId)
 			when 'Food'
-				$scope.feedSpecie(specieIndex)
+				$scope.feedSpecie(specieIndex, playerId)
 
 		$scope.refreshIds()
 		return
@@ -161,7 +162,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		$scope.clearCompatible()
 		$scope.endTurnEvolution(-1, true)
 		return
-	
+
 	# --- /play trait --- #
 
 	$scope.currentPlayerClass = (id)->
@@ -207,7 +208,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 	io.on "connect", ()->
 		loadGame()
 		return
-	
+
 	io.on "evolution connect", ()->
 		location.reload()
 		return
@@ -221,7 +222,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 
 		$scope.playerId = data.playerId
 		$scope.initializeGame()
-		
+
 		scopeApply()
 		return
 
@@ -239,13 +240,13 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 			player.cardNumber--
 			if player.cardNumber == 0
 				player.finished = true
-		
+
 		scopeApply()
 		return
 
 	io.on "player passed evolution", (data)->
 		nextPhase = $scope.ec.playerPassedEvolution()
-		
+
 		scopeApply()
 		return
 
@@ -254,11 +255,13 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		nextPhase = $scope.ec.feedSpecie(data.specieIndex)
 		$scope.clearCompatible()
 		if not nextPhase then $scope.checkCompatibleFood()
+
+		scopeApply()
 		return
 
 	io.on "player passed food", (data)->
 		nextPhase = $scope.ec.playerPassedFood()
-		
+
 		scopeApply()
 		return
 
@@ -268,7 +271,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 
 		for player in $scope.ec.game.players
 			player.finished = false
-		
+
 		$scope.initializeFoodPhase()
 
 		scopeApply()
@@ -278,10 +281,10 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		console.log "phase evolution"
 		$scope.ec.clearExtinctedSpecies()
 		$scope.me().hand = data.hand
-		$scope.ec.game.cardNumberInDeck = data.number
+		$scope.ec.game.cardNumberInDeck = data.cardNumberInDeck
 		for player, i in $scope.ec.game.players
 			player.cardNumber = data.playersCardNumber[i]
-		
+
 		scopeApply()
 		return
 
@@ -295,8 +298,8 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		return
 
 	io.on "evolution error", (data)->
-		$scope.ec.players[data.ec.currentPlayerId()].species[data.specieId].traits.pop()
-		console.log "ahah t'as perdu ta carte :D"
+		console.log data
+		$scope.ec.players[$scope.ec.currentPlayerId()].species[data.specieId].traits.pop()
 		return
 
 	return
