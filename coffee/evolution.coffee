@@ -101,11 +101,13 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 	$scope.feedSpecie = (specieIndex, playerId)->
 		if $scope.isMe(playerId) and $scope.ec.specie(specieIndex).compatible
 			$scope.ec.feedSpecie(specieIndex)
-			io.emit "end turn food", { specieIndex: specieIndex}
+			io.emit "end turn food", { specieIndex: specieIndex }
 		return
 
-	$scope.useTrait = (specieIndex, traitIndex)->
-
+	$scope.useTrait = (specieIndex, traitIndex, playerId)->
+		if $scope.ec.specie(specieIndex).compatible
+			if $scope.ec.useTrait(specieIndex, traitIndex, playerId) == "end turn"
+				io.emit "end turn food", { specieIndex: specieIndex }
 		return
 
 	$scope.checkCompatibleEvolution = (card)->
@@ -120,7 +122,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 
 	# Check is specie must be highlighted (we can feed it or we can use it) and it is our card
 	$scope.isHighlightedSpecie = (specie, playerId)->
-		return specie.compatible and $scope.isMyTurn()
+		return specie.compatible or specie.eatable and $scope.isMyTurn()
 
 	# Check is trait must be highlighted(we can feed it or we can use it) and it is our card
 	$scope.isHighlightedTrait = (trait, playerId)->
@@ -152,6 +154,7 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 			when 'Evolution'
 				$scope.selectSpecieEvolution(specieIndex, playerId)
 			when 'Food'
+				# using trait carnivorous
 				$scope.feedSpecie(specieIndex, playerId)
 
 		$scope.refreshIds()
@@ -303,4 +306,3 @@ angular.module('EvolutionApp').controller 'EvolutionCtrl', ($scope, utils, io, E
 		return
 
 	return
-

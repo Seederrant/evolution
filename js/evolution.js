@@ -122,7 +122,15 @@
         });
       }
     };
-    $scope.useTrait = function(specieIndex, traitIndex) {};
+    $scope.useTrait = function(specieIndex, traitIndex, playerId) {
+      if ($scope.ec.specie(specieIndex).compatible) {
+        if ($scope.ec.useTrait(specieIndex, traitIndex, playerId) === "end turn") {
+          io.emit("end turn food", {
+            specieIndex: specieIndex
+          });
+        }
+      }
+    };
     $scope.checkCompatibleEvolution = function(card) {
       var l, len, ref, specie;
       ref = $scope.me().species;
@@ -140,7 +148,7 @@
       }
     };
     $scope.isHighlightedSpecie = function(specie, playerId) {
-      return specie.compatible && $scope.isMyTurn();
+      return specie.compatible || specie.eatable && $scope.isMyTurn();
     };
     $scope.isHighlightedTrait = function(trait, playerId) {
       return trait.compatible && playerId === $scope.playerId;
